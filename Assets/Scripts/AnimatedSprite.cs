@@ -28,6 +28,13 @@ public class AnimatedSprite : MonoBehaviour
 
     // 기존 sprites 필드 유지(이전 코드와의 호환성을 위해)
     public Sprite[] sprites;
+    
+    // 게임 속도와 관계없이 애니메이션 속도 조절할 수 있는 스케일링 값
+    [Range(0.1f, 2.0f)]
+    public float animationSpeedScale = 1.0f;
+    
+    // 게임 속도에 따라 애니메이션 속도를 조절할지 여부
+    public bool useGameSpeedForAnimation = false;
 
     private void Awake()
     {
@@ -83,12 +90,16 @@ public class AnimatedSprite : MonoBehaviour
         {
             float frameRate = currentAnim.frameRate;
             if (frameRate <= 0) frameRate = 12f; // 기본값
-
-            // GameManager 존재 확인
-            float speed = 1f;
-            if (GameManager.Instance != null)
+            
+            // 게임 속도와 애니메이션 속도 분리
+            float speed = animationSpeedScale;
+            
+            // 게임 속도에 비례하여 애니메이션 속도를 조절할지 여부
+            if (useGameSpeedForAnimation && GameManager.Instance != null)
             {
-                speed = GameManager.Instance.gameSpeed > 0 ? GameManager.Instance.gameSpeed : 1f;
+                // 게임 속도가 너무 빠르지 않도록 제한 (최대 1.5배)
+                float gameSpeedFactor = Mathf.Min(GameManager.Instance.gameSpeed / GameManager.Instance.initialGameSpeed, 1.5f);
+                speed *= gameSpeedFactor > 0 ? gameSpeedFactor : 1f;
             }
 
             frameTimer = 1f / (frameRate * speed);
@@ -112,13 +123,17 @@ public class AnimatedSprite : MonoBehaviour
             spriteRenderer.sprite = sprites[frame];
         }
 
-        float speed = 1f;
-        if (GameManager.Instance != null)
+        float speed = animationSpeedScale;
+        
+        // 게임 속도에 비례하여 애니메이션 속도를 조절할지 여부
+        if (useGameSpeedForAnimation && GameManager.Instance != null)
         {
-            speed = GameManager.Instance.gameSpeed;
+            // 게임 속도가 너무 빠르지 않도록 제한 (최대 1.5배)
+            float gameSpeedFactor = Mathf.Min(GameManager.Instance.gameSpeed / GameManager.Instance.initialGameSpeed, 1.5f);
+            speed *= gameSpeedFactor > 0 ? gameSpeedFactor : 1f;
         }
 
-        Invoke(nameof(LegacyAnimate), 1f / speed);
+        Invoke(nameof(LegacyAnimate), 1f / (12f * speed));
     }
 
     private AnimationData FindAnimationByName(string animName)

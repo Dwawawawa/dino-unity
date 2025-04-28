@@ -1,31 +1,56 @@
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Rigidbody2D))]
 public class Player : MonoBehaviour
 {
-    private CharacterController character;
-    private Vector3 direction;
-
-    public float jumpForce = 8f;
-    public float gravity = 9.81f * 2f;
-
-    // 숙이기 관련 변수
-    private bool isDucking = false;
-    public Transform standingCollider;
-    public Transform duckingCollider;
+    // 콜라이더 관련
+    public BoxCollider2D headCollider;
+    public BoxCollider2D feetCollider;
     
-    // 애니메이션 관련
+    // 컴포넌트
+    private Rigidbody2D rb;
     private PlayerAnimator playerAnimator;
+    
+    // 상태 변수
+    private bool isJumping = false;
+    private bool isDucking = false;
+    private bool isLongJumpApplied = false;
+    
+    // 점프 관련
+    private float jumpPressTime = 0f;
+    private bool isJumpPressed = false;
+    private float shortJumpThreshold = 0.1f;
+    
+    // 점프 힘
+    public float addShortForce = 5.0f;
+    public float addLongForce = 8.0f;
+    public float gravity = 1f;
+    
+    // 콜라이더 위치값 (서있을 때와 숙일 때)
+    private Vector2 headStandingPosition = new Vector2(0.2045271f, 0.2826734f);
+    private Vector2 headStandingSize = new Vector2(0.4202094f, 0.3144546f);
+    private Vector2 feetStandingPosition = new Vector2(-0.02893686f, -0.3953031f);
+    private Vector2 feetStandingSize = new Vector2(0.4470406f, 0.2143997f);
+
+    private Vector2 headDuckingPosition = new Vector2(0.3602087f, 0.08433926f);
+    private Vector2 headDuckingSize = new Vector2(0.3988833f, 0.3528416f);
+    private Vector2 feetDuckingPosition = new Vector2(-0.2287889f, -0.2266337f);
+    private Vector2 feetDuckingSize = new Vector2(0.308136f, 0.1548693f);
 
     private void Awake()
     {
-        character = GetComponent<CharacterController>();
+        rb = GetComponent<Rigidbody2D>();
         playerAnimator = GetComponent<PlayerAnimator>();
+        SetupStandingColliders();
     }
 
     private void OnEnable()
     {
-        direction = Vector3.zero;
+        isJumping = false;
+        isDucking = false;
+        rb.gravityScale = gravity;
+        SetupStandingColliders();
+        
         if (playerAnimator != null)
         {
             playerAnimator.ResetStates();
@@ -34,74 +59,147 @@ public class Player : MonoBehaviour
 
     private void Update()
     {
-        direction += gravity * Time.deltaTime * Vector3.down;
+        HandleJumpInput();
+        HandleDuckInput();
+        UpdateAnimatorState();
+    }
 
-        if (character.isGrounded)
+    private void HandleJumpInput()
+    {
+        if ((Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.UpArrow)) && !isJumping && !isDucking)
         {
-            direction = Vector3.down;
+            isJumpPressed = true;
+            jumpPressTime = 0f;
+            Jump(addShortForce);
+        }
 
-            // 점프 입력 처리
-            if (Input.GetButton("Jump") && !isDucking)
+        if (isJumpPressed)
+        {
+            if (Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.UpArrow))
             {
-                direction = Vector3.up * jumpForce;
-                PlayJumpSound();
-            }
-
-            // 숙이기 입력 처리
-            if (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S))
-            {
-                if (!isDucking)
+                jumpPressTime += Time.deltaTime;
+                if (jumpPressTime > shortJumpThreshold && !isLongJumpApplied)
                 {
-                    Duck();
+                    ApplyAdditionalForce(addLongForce - addShortForce);
+                    isLongJumpApplied = true;
                 }
             }
-            else if (isDucking)
+            else if (Input.GetKeyUp(KeyCode.Space) || Input.GetKeyUp(KeyCode.UpArrow))
             {
-                StandUp();
+                isJumpPressed = false;
             }
         }
+    }
 
-        // 애니메이터 상태 업데이트
-        if (playerAnimator != null)
+    private void HandleDuckInput()
+    {
+        // 공중에서 다운키를 누르면 빠르게 하강
+        if (Input.GetKeyDown(KeyCode.DownArrow) && isJumping)
         {
-            playerAnimator.isGrounded = character.isGrounded;
-            playerAnimator.isDucking = isDucking;
+            rb.gravityScale = 7f;
+            return;
         }
 
-        character.Move(direction * Time.deltaTime);
+        // 땅에서 숙이기
+        if (Input.GetKey(KeyCode.DownArrow) && !isJumping)
+        {
+            if (!isDucking)
+            {
+                Duck();
+            }
+        }
+        else if (isDucking)
+        {
+            StandUp();
+        }
+    }
+
+    private void Jump(float force)
+    {
+        if (rb != null)
+        {
+            rb.AddForce(Vector2.up * force, ForceMode2D.Impulse);
+            isJumping = true;
+            isLongJumpApplied = false;
+            PlayJumpSound();
+        }
+    }
+
+    private void ApplyAdditionalForce(float extraForce)
+    {
+        if (rb != null)
+        {
+            rb.AddForce(Vector2.up * extraForce, ForceMode2D.Impulse);
+        }
     }
 
     private void Duck()
     {
         isDucking = true;
-
-        // 숙이기 콜라이더로 전환
-        if (standingCollider != null && duckingCollider != null)
-        {
-            standingCollider.gameObject.SetActive(false);
-            duckingCollider.gameObject.SetActive(true);
-        }
-
+        SetupDuckingColliders();
         PlayDuckSound();
     }
 
     private void StandUp()
     {
         isDucking = false;
+        SetupStandingColliders();
+    }
 
-        // 서있는 콜라이더로 전환
-        if (standingCollider != null && duckingCollider != null)
+    private void SetupStandingColliders()
+    {
+        
+        if (headCollider != null)
         {
-            standingCollider.gameObject.SetActive(true);
-            duckingCollider.gameObject.SetActive(false);
+            headCollider.offset = headStandingPosition;
+            headCollider.size = headStandingSize;
+        }
+        
+        if (feetCollider != null)
+        {
+            feetCollider.offset = feetStandingPosition;
+            feetCollider.size = feetStandingSize;
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void SetupDuckingColliders()
+    {
+        
+        if (headCollider != null)
+        {
+            headCollider.offset = headDuckingPosition;
+            headCollider.size = headDuckingSize;
+        }
+        
+        if (feetCollider != null)
+        {
+            feetCollider.offset = feetDuckingPosition;
+            feetCollider.size = feetDuckingSize;
+        }
+    }
+
+    private void UpdateAnimatorState()
+    {
+        if (playerAnimator != null)
+        {
+            playerAnimator.isGrounded = !isJumping;
+            playerAnimator.isDucking = isDucking;
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isJumping = false;
+            rb.gravityScale = gravity;
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Obstacle"))
         {
-            // 죽음 애니메이션 재생
             if (playerAnimator != null)
             {
                 playerAnimator.PlayDeath();

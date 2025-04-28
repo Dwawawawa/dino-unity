@@ -66,7 +66,10 @@ public class GameManager : MonoBehaviour
         gameSpeed = initialGameSpeed;
         enabled = true;
 
+        // 플레이어 재활성화 전에 잠시 비활성화
+        player.gameObject.SetActive(false);
         player.gameObject.SetActive(true);
+        
         spawner.gameObject.SetActive(true);
         gameOverText.gameObject.SetActive(false);
         retryButton.gameObject.SetActive(false);

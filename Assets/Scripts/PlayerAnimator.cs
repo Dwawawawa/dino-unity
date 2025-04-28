@@ -24,6 +24,12 @@ public class PlayerAnimator : MonoBehaviour
     
     private void UpdateAnimationState()
     {
+        // animatedSprite가 null이면 리턴
+        if (animatedSprite == null)
+        {
+            return;
+        }
+        
         // 죽음 상태가 최우선
         if (isDead)
         {
@@ -59,6 +65,16 @@ public class PlayerAnimator : MonoBehaviour
         isDead = false;
         isDucking = false;
         isGrounded = true;
-        UpdateAnimationState();
+        
+        // animatedSprite가 초기화되었는지 확인
+        if (animatedSprite == null)
+        {
+            animatedSprite = GetComponent<AnimatedSprite>();
+        }
+        
+        if (animatedSprite != null)
+        {
+            animatedSprite.ChangeState(AnimatedSprite.AnimState.Run);
+        }
     }
 }
