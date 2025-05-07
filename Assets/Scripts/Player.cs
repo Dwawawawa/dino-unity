@@ -27,14 +27,14 @@ public class Player : MonoBehaviour
     public float gravity = 1f;
     
     // 콜라이더 위치값 (서있을 때와 숙일 때)
-    private Vector2 headStandingPosition = new Vector2(0.2045271f, 0.2826734f);
-    private Vector2 headStandingSize = new Vector2(0.4202094f, 0.3144546f);
-    private Vector2 feetStandingPosition = new Vector2(-0.02893686f, -0.3953031f);
-    private Vector2 feetStandingSize = new Vector2(0.4470406f, 0.2143997f);
+    private Vector2 headStandingPosition = new Vector2(0.2045271f, 0.2826734f + 0.5f); 
+    private Vector2 headStandingSize = new Vector2(0.4202094f, 0.3144546f );
+    private Vector2 feetStandingPosition = new Vector2(-0.02893686f, -0.3953031f + 0.5f);
+    private Vector2 feetStandingSize = new Vector2(0.4470406f, 0.2143997f );
 
-    private Vector2 headDuckingPosition = new Vector2(0.3602087f, 0.08433926f);
+    private Vector2 headDuckingPosition = new Vector2(0.3602087f, 0.08433926f + 0.3f);
     private Vector2 headDuckingSize = new Vector2(0.3988833f, 0.3528416f);
-    private Vector2 feetDuckingPosition = new Vector2(-0.2287889f, -0.2266337f);
+    private Vector2 feetDuckingPosition = new Vector2(-0.2287889f, -0.2266337f + 0.3f);
     private Vector2 feetDuckingSize = new Vector2(0.308136f, 0.1548693f);
 
     private void Awake()
